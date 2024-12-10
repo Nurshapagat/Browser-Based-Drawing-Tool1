@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Инструмент для рисования</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 1px solid black;
+            cursor: crosshair;
+        }
+        .controls {
+            margin: 10px 0;
+        }
+        .controls button {
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Инструмент для рисования</h1>
+    <div class="controls">
+        <label for="color">Түс:</label>
+        <input type="color" id="color" value="#000000">
+        <label for="size">Кистаның көлемі:</label>
+        <input type="number" id="size" value="5" min="1" max="35">
+        <button id="eraser">Өшіргіш</button>
+        <button id="undo">Артқа</button>
+        <button id="redo">Алға</button>
+    </div>
+    <canvas id="drawingCanvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById("drawingCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let painting = false;
+        let brushColor = document.getElementById("color").value;
+        let brushSize = parseInt(document.getElementById("size").value, 10);
+        let isEraser = false;
+
+        const undoStack = [];
+        const redoStack = [];
+        // Тарихты сақтау
+        function saveState() {
+            undoStack.push(canvas.toDataURL());
+            if (undoStack.length > 20) {
+                undoStack.shift(); // Максималды тарих көлемі
+            }
+            redoStack.length = 0; // "Redo" тарихын тазалау
+        }
+        // "Undo" функциясы
+        function undo() {
+            if (undoStack.length > 0) {
+                redoStack.push(canvas.toDataURL());
+                const imgData = undoStack.pop();
+                const img = new Image();
+                img.src = imgData;
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+            }
+        }
+        // "Redo" функциясы
+        function redo() {
+            if (redoStack.length > 0) {
+                undoStack.push(canvas.toDataURL());
+                const imgData = redoStack.pop();
+                const img = new Image();
+                img.src = imgData;
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+            }
+        }
+        // Оқиғаларды өңдеу
+        canvas.addEventListener("mousedown", startPainting);
+        canvas.addEventListener("mouseup", stopPainting);
+        canvas.addEventListener("mousemove", draw);
+
+        document.getElementById("color").addEventListener("input", (e) => {
+            brushColor = e.target.value;
+            isEraser = false;
+        });
+        document.getElementById("size").addEventListener("input", (e) => {
+            brushSize = parseInt(e.target.value, 10);
+        });
+        document.getElementById("eraser").addEventListener("click", () => {
+            isEraser = true;
+        });
+        document.getElementById("undo").addEventListener("click", undo);
+        document.getElementById("redo").addEventListener("click", redo);
+        // Сурет салуды бастау
+        function startPainting(e) {
+            painting = true;
+            saveState();
+            draw(e); // Бірден басталатын етіп қосу
+        }
+        // Сурет салуды аяқтау
+        function stopPainting() {
+            painting = false;
+            ctx.beginPath(); // Жаңа жол бастау
+        }
+        // Сурет салу функциясы
+        function draw(e) {
+            if (!painting) return;
+            const x = e.offsetX;
+            const y = e.offsetY;
+
+            if (isEraser) {
+                ctx.save();
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.beginPath();
+                ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            } else {
+                ctx.fillStyle = brushColor;
+                ctx.beginPath();
+                ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    </script>
+</body>
+</html>
